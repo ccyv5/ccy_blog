@@ -83,32 +83,32 @@ class Field(object):
         return '<%s,%s:%s>'%(self.__class__.__name__,self.colum_type,self.name)
 
 class StringField(Field):
-    def __init__(self,name=None,ddl='varchar(100)',primary_key=False,default=None):
+    def __init__(self,name=None,primary_key=False,default=None,ddl='varchar(100)'):
         super(StringField,self).__init__(name,ddl,primary_key,default)
 
 class BooleanField(Field):
-    def __init__(self,name=None,ddl='boolean',primary_key=False,default=None):
-        super(BooleanField,self).__init__(name,ddl,primary_key,default)
+    def __init__(self,name=None,primary_key=False,default=None):
+        super(BooleanField,self).__init__(name,'boolean',primary_key,default)
 
 class IntegerField(Field):
-    def __init__(self,name=None,ddl='bigint',primary_key=False,default=0):
-        super(IntegerField,self).__init__(name,ddl,primary_key,default)
+    def __init__(self,name=None,primary_key=False,default=0):
+        super(IntegerField,self).__init__(name,'bigint',primary_key,default)
 
 class FloatField(Field):
-    def __init__(self,name=None,ddl='real',primary_key=False,default=0.0):
-        super(FloatField,self).__init__(name,ddl,primary_key,default)
+    def __init__(self,name=None,primary_key=False,default=0.0):
+        super(FloatField,self).__init__(name,'real',primary_key,default)
 
 class TextField(Field):
-    def __init__(self,name=None,ddl='Text',primary_key=False,default=None):
-        super(TextField,self).__init__(name,ddl,primary_key,default)
+    def __init__(self,name=None,primary_key=False,default=None):
+        super(TextField,self).__init__(name,'Text',primary_key,default)
 
 class ModelMetaclass(type):
     def __new__(cls,name,bases,attrs):
         #排除 Model 类的创建
         if name == "Model":
             return type.__new__(cls,name,bases,attrs)
-        tablename   =   attrs.get('__table__',None) or name     #通过表的属性获取 还在通过表的类名
-        logging.info('found a model: %s (table: %s)'%(name,tableName))
+        tablename   =   attrs.get('__tablename__',None) or name     #通过表的属性获取 还在通过表的类名
+        logging.info('found a model: %s (table: %s)'%(name,tablename))
         # 获取所有的Field和主键名:
         mappings = dict() #保存映射关系
         fields = [] #保存除主键外的属性
@@ -120,26 +120,26 @@ class ModelMetaclass(type):
                 mappings[k] = v
                 if v.primary_key:  # 找到主键名
                     if primarykey:
-                        raise StandardError('Duplicate primary key for field: k' % k)
+                        raise BaseException('Duplicate primary key for field: k' % k)
                     primarykey = k    # 此列设为列表的主键
                 else:
                     fields.append(k)  # 保存除主键外的属性
-            #如果该表中没有 主键列,抛出错误
-            if not primarykey:
-                raise StandardError('primary key not found.')
-            for k in mappings.keys():        #如果不删除,调用该属性,返回的 只是一个字段类的指向.没有意义
-                attrs.pop(k)  # 从类属性中删除Field属性,否则，容易造成运行时错误（实例的属性会遮盖类的同名属性）
-            escaped_fields = list(map(lambda f: "`%s`"%f,fields))#转换为sql语法      名称变成 `namw` 排除中文干扰
-            #创建供Model类使用属性
-            attrs['__mappings__'] = mappings # 保存属性和列的映射关系
-            attrs['__table__'] = tableName #表的名字
-            attrs['__primary_key__'] = primarykey # 主键属性名
-            attrs['__fields__'] = fields # 除主键外的属性名
-            attrs['__select__'] = 'select `%s`,%s from %s'%(primarykey,','.join(escaped_fields),tableName)
-            attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))#占位符
-            attrs['__update__'] = 'update `%s` set %s where `%s`=?'%(tableName,','.join(map(lambda f: '`%s`=?'%(mappings.get(f).name or f),fields)),primarykey)#查询列的名字，也看一下在Field定义上有没有定义名字，默认None
-            attrs['__delete__'] = 'delete from `%s` where `%s`=?'%(tableName,primarykey)
-            return type.__new__(cls,name,bases,attrs)
+        #如果该表中没有 主键列,抛出错误
+        if not primarykey:
+            raise BaseException('primary key not found.')
+        for k in mappings.keys():        #如果不删除,调用该属性,返回的 只是一个字段类的指向.没有意义
+            attrs.pop(k)  # 从类属性中删除Field属性,否则，容易造成运行时错误（实例的属性会遮盖类的同名属性）
+        escaped_fields = list(map(lambda f: "`%s`"%f,fields))#转换为sql语法      名称变成 `namw` 排除中文干扰
+        #创建供Model类使用属性
+        attrs['__mappings__'] = mappings # 保存属性和列的映射关系
+        attrs['__table__'] = tablename #表的名字
+        attrs['__primary_key__'] = primarykey # 主键属性名
+        attrs['__fields__'] = fields # 除主键外的属性名
+        attrs['__select__'] = 'select `%s`,%s from %s'%(primarykey,','.join(escaped_fields),tablename)
+        attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tablename, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))#占位符
+        attrs['__update__'] = 'update `%s` set %s where `%s`=?'%(tablename,','.join(map(lambda f: '`%s`=?'%(mappings.get(f).name or f),fields)),primarykey)#查询列的名字，也看一下在Field定义上有没有定义名字，默认None
+        attrs['__delete__'] = 'delete from `%s` where `%s`=?'%(tablename,primarykey)
+        return type.__new__(cls,name,bases,attrs)
 
 class Model(dict,metaclass=ModelMetaclass):
     def __init__(self, **kw):
