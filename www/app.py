@@ -101,8 +101,7 @@ async def response_factory(app, handler):
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
-                logging.info('########################################################...')
-                resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
+                resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))      #使用模板
                 resp.content_type = 'text/html;charset=utf-8'
                 return resp
         if isinstance(r, int) and r >= 100 and r < 600:
@@ -125,9 +124,8 @@ async def init(loop):#Web app服务器初始化
     app = web.Application(loop=loop, middlewares=[
         logger_factory, response_factory
     ])
-    init_jinja2(app, filters=dict(datetime=datetime_filter))    #初始化
+    init_jinja2(app, filters=dict(datetime=datetime_filter))    #模板输出话初始化
     #app.router.add_route(method='GET',path='/',handler=index)#把响应函数添加到响应函数集合
-
     await orm.create_pool(loop, user='www-data', password='www-data', db='awesome')
     coroweb.add_routes(app, "handlers")
     coroweb.add_static(app)
