@@ -7,6 +7,8 @@ __author__="ccy"
 编写orm模块
 '''
 
+
+global __pool
 import asyncio
 import logging
 import aiomysql
@@ -45,7 +47,7 @@ def create_args_string(num):
 async def select(sql,args,size=None):
     log(sql)
     global __pool #引入全局变量
-    with await __pool as conn: #打开pool的方法,或-->async with __pool.get() as conn:
+    async with __pool.get() as conn: #打开pool的方法,或-->async with __pool.get() as conn:
         cur = await conn.cursor(aiomysql.DictCursor) #创建游标,aiomysql.DictCursor的作用使生成结果是一个dict
         await cur.execute(sql.replace('?',"%s"),args or ()) #执行sql语句，sql语句的占位符是'?',而Mysql的占位符是'%s'
         if size:
@@ -190,7 +192,7 @@ class Model(dict,metaclass=ModelMetaclass):
             else:
                 raise ValueError('Invalid limit value: %s'%str(limit))
         rs = await select(' '.join(sql),args)
-        return [cls(**r) for r in rs] #调试的时候尝试了一下return rs，输出结果一样
+        return [cls(**r) for r in rs]   #调试的时候尝试了一下return rs，输出结果一样
 
     @classmethod
     async def findnumber(cls,selectField,where=None,args=None):

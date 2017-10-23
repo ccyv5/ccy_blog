@@ -50,7 +50,7 @@ if __name__== '__main__':
 
     async def test():
         await orm.create_pool(loop,user='www-data', password='www-data', db='awesome')
-        u = User(name='Test', email='test3@example.com', passwd='123456780', image='about:blank')
+        u = User(name='Test3', email='test3@example.com', passwd='123456780', image='about:blank')
         await u.save()
         a = await u.findall() #这个要打印才显示出来
         print(a)

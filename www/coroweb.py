@@ -9,6 +9,7 @@ __author__='ccy'
 
 import asyncio
 import aiohttp
+import ApiErrorType
 
 import asyncio, os, inspect, logging, functools         #inspect 检查功能
 
@@ -137,7 +138,7 @@ class RequestHandler(object):
         try:
             r = await self._fn(**kw)
             return r
-        except APIError as e: #APIError另外创建
+        except ApiErrorType.APIError as e: #APIError另外创建
             return dict(error=e.error, data=e.data, message=e.message)
 
 #add_route 用于注册url函数
@@ -170,7 +171,8 @@ def add_routes(app,module_name):
             if path and method: #这里要查询path以及method是否存在而不是等待add_route函数查询，因为那里错误就要报错了
                 add_route(app,fn)
 #添加静态文件夹的路径,不需要解析,直接返回,static文件夹中的文件
-def add_static(add):
+def add_static(app):
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'static')#输出当前文件夹中'static'的路径
     app.router.add_static('/static/',path)#prefix (str) – URL path prefix for handled static files
-    logging.info('add static %s => %s'%('/static/',path))
+    logging.info('add static %s => %s' % ('/static/',path))
+
