@@ -7,7 +7,7 @@ Configuration
 
 __author__ = 'ccy'
 #http://blog.csdn.net/qq_38801354/article/details/73359227
-import config_default
+from conf import config_default
 
 class Dict(dict):
     '''
@@ -48,9 +48,9 @@ def toDict(d):
 configs = config_default.configs
 
 try:
-    import config_override
+    from conf import config_override
     configs = merge(configs, config_override.configs)
 except ImportError:
     pass
 
-configs = toDict(configs)
+config = toDict(configs)

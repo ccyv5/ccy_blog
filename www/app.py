@@ -22,6 +22,8 @@ from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 import json, time
 import logging
+from handlers import cookie2user,COOKIE_NAME
+
 
 
 #初始化jinja2，以便其他函数使用jinja2模板
@@ -78,9 +80,26 @@ async def data_factory(app, handler):
         return (await handler(request))
     return parse_data
 #response_factory 拦截器 在处理一些url 是 直接返回web.response 的内容,不在麻烦到url中处理
+
+#绑定解析cookie的中间件
+async def auth_factory(app, handler):
+    async def auth(request):
+        logging.info('check user: %s %s' % (request.method, request.path))
+        request.__user__ = None
+        logging.info("auth_factory##### %s" % (str(request.__user__),) )
+        cookie_str = request.cookies.get(COOKIE_NAME)
+        if cookie_str:
+            user = await cookie2user(cookie_str)
+            if user:
+                logging.info('set current user: %s' % user.email)
+                request.__user__ = user
+        return (await handler(request))
+    return auth
+
 async def response_factory(app, handler):
     async def response(request):
         logging.info('Response handler...')
+        logging.info("response_factory##### %s" % (str(request.__user__),))
         r = await handler(request)
         if isinstance(r, web.StreamResponse):
             return r
@@ -101,6 +120,7 @@ async def response_factory(app, handler):
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
+                r['__user__'] = request.__user__
                 resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))      #使用模板
                 resp.content_type = 'text/html;charset=utf-8'
                 return resp
@@ -122,12 +142,12 @@ async def response_factory(app, handler):
 async def init(loop):#Web app服务器初始化
     #app = web.Application(loop=loop)#制作响应函数集合
     app = web.Application(loop=loop, middlewares=[
-        logger_factory, response_factory
+        logger_factory,auth_factory,response_factory
     ])
     init_jinja2(app, filters=dict(datetime=datetime_filter))    #模板输出话初始化
     #app.router.add_route(method='GET',path='/',handler=index)#把响应函数添加到响应函数集合
     await orm.create_pool(loop, user='www-data', password='www-data', db='awesome')
-    coroweb.add_routes(app, "handlers")
+    coroweb.add_routes(app, "handlers")     #将handlers 模块中的函数和url进行绑定
     coroweb.add_static(app)
     srv = await loop.create_server(app.make_handler(),'0.0.0.0',8000)
     logging.info('server start at http://0.0.0.0:8000')#创建服务器(连接网址、端口，绑定handler)
